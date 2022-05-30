@@ -1,3 +1,4 @@
+/* INCLUDES */
 #include <iostream>
 #include <mysql.h>
 #include "imgui.h"
@@ -5,6 +6,7 @@
 #include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h> 
 
+/* HEADERS */
 MYSQL* connectDb(const char*, const char*, const char*, const char*, unsigned int);
 MYSQL* connectTestDb();
 int makeQuery(MYSQL*, std::string);
@@ -79,8 +81,9 @@ int main() {
 	/* STATE */
 	bool show_demo_window = true;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	bool showWindow = true;
 
-	/* MAIN LOOP */
+	/* -----MAIN LOOP----- */
 	while (!glfwWindowShouldClose(window))
 	{
 		// Poll and handle events (inputs, window resize, etc.)
@@ -91,17 +94,21 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		// show the demo
-		ImGui::ShowDemoWindow(&show_demo_window);
+		// stuff
+		if (showWindow) {
+			ImGui::Begin("Hello World!", &showWindow);
+			ImGui::Text("This is some useful text.");
+			ImGui::End();
+		}
 
-		// Rendering
-		ImGui::Render();
+		/* RENDERING */
+		ImGui::Render(); // ends the Dear ImGui frame, finalize the draw data.
 		int display_w, display_h;
-		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, display_w, display_h);
-		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-		glClear(GL_COLOR_BUFFER_BIT);
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		glfwGetFramebufferSize(window, &display_w, &display_h); // stores framebuffer width and height 
+		glViewport(0, 0, display_w, display_h); // sets viewport ??
+		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w); // Specifies rbga values for glClear.
+		glClear(GL_COLOR_BUFFER_BIT); // Sets colour writing buffers to values previously selected by glClearColor.
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData()); // opengl3 render function
 
 		// Update and Render additional Platform Windows
 		// (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.

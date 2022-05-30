@@ -34,80 +34,57 @@ template<typename...Datas> bool updateTable(MYSQL*, std::string, Data, Data, Dat
 template<typename...Datas> std::string addValuesToUpdateTableQuery(std::string, Data, Datas...);
 std::string addValuesToUpdateTableQuery(std::string);
 bool deleteRowFromTable(MYSQL*, std::string, Data);
+static void glfw_error_callback(int, const char*);
 
 int main() {
-	MYSQL* conn;
-	std::string table;
-	bool createdTable;
-	bool droppedTable;
-	bool updatedTable;
-	bool deletedTable;
+	GLFWwindow* window;
 
-	conn = connectTestDb();
-
-	Column c1, c2, c3;
-	c1.name = "PersonId";
-	c1.dataType = "int";
-	c2.name = "username";
-	c2.dataType = "varchar(255)";
-	c3.name = "age";
-	c3.dataType = "int";
-	createdTable = createTable(conn, "testTable", c1, c2, c3);
-	if (createdTable) {
-		std::cout << "createTable Success" << "\n";
-	} else {
+	/* SET UP WINDOW */
+	glfwSetErrorCallback(glfw_error_callback); //set up glfw error handling
+	if (!glfwInit()) { //initialize the library
 		return 1;
 	}
+	window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL); // create window and its opengl context
+	if (!window) { // terminate glfw library if error creating window
+		glfwTerminate();
+		return -1;
+	} 
+	glfwMakeContextCurrent(window); // make window's context current
+	glfwSwapInterval(1); // enable vsync
 
-	Data d1, d2, d3;
-	d1.name = c1.name;
-	d1.dataType = c1.dataType;
-	d1.value = "123";
-	d2.name = c2.name;
-	d2.dataType = c2.dataType;
-	d2.value = "ethan";
-	d3.name = c3.name;
-	d3.dataType = c3.dataType;
-	d3.value = "22";
+	/* SET UP DEAR IMGUI CONTEXT */
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io; // create variable to deal with inputs/ouputs
+	ImGui::StyleColorsDark(); 	// Setup Dear ImGui style
 
-	insertInto(conn, "testTable", d1, d2, d3);
+	/* Setup Platform / Renderer backends */ 
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version460"); // -------dev computer runs opengl4.6------- probably want to fix this
 
-	table = readTable(conn, "testTable");
-	std::cout << table << std::endl;
+	/* MAIN LOOP */
+	while (!glfwWindowShouldClose(window))
+	{
+		/* Render here */
+		glClear(GL_COLOR_BUFFER_BIT);
 
-	Data condition, d4, d5;
-	condition.name = "username";
-	condition.value = "ethan";
-	condition.dataType = "varchar(255)";
-	d4.name = "age";
-	d4.value = "23";
-	d4.dataType = "int";
-	d5.name = "username";
-	d5.value = "goatman";
-	d5.dataType = "varchar(255)";
-	updatedTable = updateTable(conn, "testTable", condition, d4, d5);
-	if (updatedTable) {
-		std::cout << "updateTable Success" << "\n";
+		/* Swap front and back buffers */
+		glfwSwapBuffers(window);
+
+		/* Poll for and process events */
+		glfwPollEvents();
 	}
 
-	std::cout << readTable(conn, "testTable") << std::endl;
-
-	deletedTable = deleteRowFromTable(conn, "testTable", d5);
-	if (deletedTable) {
-		std::cout << "deleteFromTable Sucess" << "\n";
-	}
-
-	std::cout << readTable(conn, "testTable") << std::endl;
-
-	droppedTable = dropTable(conn, "testTable");
-	if (droppedTable) {
-		std::cout << "dropTable Success" << "\n";
-	}
-
-	delete conn;
+	glfwTerminate();
 
 	return 0;
 }
+
+static void glfw_error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
+
 
 bool deleteRowFromTable(MYSQL* conn, std::string table , Data d1) {
 	int qstate;

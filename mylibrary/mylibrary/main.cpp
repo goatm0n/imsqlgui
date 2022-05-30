@@ -44,6 +44,9 @@ int main() {
 	if (!glfwInit()) { //initialize the library
 		return 1;
 	}
+	const char* glsl_version = "#version 130"; // GL 3.0 + GLSL 130
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // dk what these 2 lines do but doesnt work without them
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL); // create window and its opengl context
 	if (!window) { // terminate glfw library if error creating window
 		glfwTerminate();
@@ -52,29 +55,77 @@ int main() {
 	glfwMakeContextCurrent(window); // make window's context current
 	glfwSwapInterval(1); // enable vsync
 
+
 	/* SET UP DEAR IMGUI CONTEXT */
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io; // create variable to deal with inputs/ouputs
-	ImGui::StyleColorsDark(); 	// Setup Dear ImGui style
+	ImGuiIO& io = ImGui::GetIO(); (void)io;						// create variable to deal with inputs/ouputs
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
 
-	/* Setup Platform / Renderer backends */ 
+	/* SET UP DEAR IMGUI STYLE */
+	ImGui::StyleColorsDark();
+	ImGuiStyle& style = ImGui::GetStyle();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {    // When viewports are enabled we tweak WindowRounding/WindowBg 
+		style.WindowRounding = 0.0f;							// so platform windows can look identical to regular ones.
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
+
+	/* SETUP PLATFORM / RENDERER BACKENDS */ 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version460"); // -------dev computer runs opengl4.6------- probably want to fix this
+	ImGui_ImplOpenGL3_Init(glsl_version);            
+
+	/* STATE */
+	bool show_demo_window = true;
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	/* MAIN LOOP */
 	while (!glfwWindowShouldClose(window))
 	{
-		/* Render here */
-		glClear(GL_COLOR_BUFFER_BIT);
+		// Poll and handle events (inputs, window resize, etc.)
+		glfwPollEvents();
 
-		/* Swap front and back buffers */
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		// show the demo
+		ImGui::ShowDemoWindow(&show_demo_window);
+
+		// Rendering
+		ImGui::Render();
+		int display_w, display_h;
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+		glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		// Update and Render additional Platform Windows
+		// (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+		//  For this specific demo app we could also call glfwMakeContextCurrent(window) directly)
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
+
 		glfwSwapBuffers(window);
 
-		/* Poll for and process events */
-		glfwPollEvents();
+
+
+
 	}
 
+	/* CLEAN UP */
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+	glfwDestroyWindow(window);
 	glfwTerminate();
 
 	return 0;

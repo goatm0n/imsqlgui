@@ -37,7 +37,8 @@ template<typename...Datas> std::string addValuesToUpdateTableQuery(std::string, 
 std::string addValuesToUpdateTableQuery(std::string);
 bool deleteRowFromTable(MYSQL*, std::string, Data);
 static void glfw_error_callback(int, const char*);
-void showMySqlTable(MYSQL*, std::string, bool*);	// display table as formatted string in imgui window
+void showMySqlTableString(MYSQL*, std::string, bool*);	// display table as formatted string in imgui window
+void showMySqlTable(MYSQL*, std::string, bool*); // display table as dear imgui table
 
 int main() {
 	GLFWwindow* window;
@@ -82,6 +83,7 @@ int main() {
 	/* STATE */
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	bool show_window = true;
+	bool show_table_string = false;
 	bool show_table = false;
 	MYSQL* conn = connectTestDb();
 
@@ -101,8 +103,13 @@ int main() {
 			ImGui::Begin("Hello World!", &show_window);
 			ImGui::Text("This is some useful text.");
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::Checkbox("Show Table", &show_table);
+			ImGui::Checkbox("Show Table String ", &show_table_string);
+			ImGui::Checkbox("Show Table ", &show_table);
 			ImGui::End();
+		}
+
+		if (show_table_string) {
+			showMySqlTableString(conn, "testTable", &show_table);
 		}
 
 		if (show_table) {
@@ -140,16 +147,40 @@ int main() {
 	ImGui::DestroyContext();
 	glfwDestroyWindow(window);
 	glfwTerminate();
+	delete conn;
 
 	return 0;
 }
 
-void showMySqlTable(MYSQL* conn, std::string table, bool *show_table) {
+void showMySqlTableString(MYSQL* conn, std::string table, bool *show_table) {
 	std::string table_string = readTable(conn, table);
 	const char* table_c_string = table_string.c_str();
 	ImGui::Begin("MySqlTable", show_table);
 	ImGui::Text(table_c_string);
 	ImGui::End();
+}
+
+void showMySqlTable(MYSQL* conn, std::string table, bool* show_table) {
+	MYSQL_RES* res = getTable(conn, table);
+	MYSQL_FIELD* fields = mysql_fetch_fields(res);
+	unsigned int num_fields = mysql_num_fields(res);
+	MYSQL_ROW row;
+
+	if (ImGui::BeginTable(table.c_str(), num_fields)) {
+		ImGui::TableNextRow();
+		for (int column = 0; column < num_fields; column++) {
+			ImGui::TableSetColumnIndex(column);
+			ImGui::Text(fields[column].name);
+		}
+		while (row = mysql_fetch_row(res)) {
+			ImGui::TableNextRow();
+			for (int column = 0; column < num_fields; column++) {
+				ImGui::TableSetColumnIndex(column);
+				ImGui::Text(row[column]);
+			}
+		}
+		ImGui::EndTable();
+	}
 }
 
 static void glfw_error_callback(int error, const char* description)

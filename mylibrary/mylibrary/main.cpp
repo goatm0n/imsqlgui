@@ -37,6 +37,7 @@ template<typename...Datas> std::string addValuesToUpdateTableQuery(std::string, 
 std::string addValuesToUpdateTableQuery(std::string);
 bool deleteRowFromTable(MYSQL*, std::string, Data);
 static void glfw_error_callback(int, const char*);
+void showMySqlTable(MYSQL*, std::string, bool*);	// display table as formatted string in imgui window
 
 int main() {
 	GLFWwindow* window;
@@ -79,9 +80,10 @@ int main() {
 	ImGui_ImplOpenGL3_Init(glsl_version);            
 
 	/* STATE */
-	bool show_demo_window = true;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-	bool showWindow = true;
+	bool show_window = true;
+	bool show_table = false;
+	MYSQL* conn = connectTestDb();
 
 	/* -----MAIN LOOP----- */
 	while (!glfwWindowShouldClose(window))
@@ -95,11 +97,19 @@ int main() {
 		ImGui::NewFrame();
 
 		// stuff
-		if (showWindow) {
-			ImGui::Begin("Hello World!", &showWindow);
+		if (show_window) {
+			ImGui::Begin("Hello World!", &show_window);
 			ImGui::Text("This is some useful text.");
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::Checkbox("Show Table", &show_table);
 			ImGui::End();
 		}
+
+		if (show_table) {
+			showMySqlTable(conn, "testTable", &show_table);
+		}
+
+
 
 		/* RENDERING */
 		ImGui::Render(); // ends the Dear ImGui frame, finalize the draw data.
@@ -121,11 +131,7 @@ int main() {
 			glfwMakeContextCurrent(backup_current_context);
 		}
 
-		glfwSwapBuffers(window);
-
-
-
-
+		glfwSwapBuffers(window); // swap virtual and rendered windows
 	}
 
 	/* CLEAN UP */
@@ -136,6 +142,14 @@ int main() {
 	glfwTerminate();
 
 	return 0;
+}
+
+void showMySqlTable(MYSQL* conn, std::string table, bool *show_table) {
+	std::string table_string = readTable(conn, table);
+	const char* table_c_string = table_string.c_str();
+	ImGui::Begin("MySqlTable", show_table);
+	ImGui::Text(table_c_string);
+	ImGui::End();
 }
 
 static void glfw_error_callback(int error, const char* description)

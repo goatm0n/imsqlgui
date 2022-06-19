@@ -85,6 +85,7 @@ int main() {
 	bool show_window = true;
 	bool show_table_string = false;
 	bool show_table = false;
+	bool show_demo = false;
 	MYSQL* conn = connectTestDb();
 
 	/* -----MAIN LOOP----- */
@@ -103,6 +104,7 @@ int main() {
 			ImGui::Begin("Hello World!", &show_window);
 			ImGui::Text("This is some useful text.");
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::Checkbox("Show Demo", &show_demo);
 			ImGui::Checkbox("Show Table String ", &show_table_string);
 			ImGui::Checkbox("Show Table ", &show_table);
 			ImGui::End();
@@ -116,6 +118,9 @@ int main() {
 			showMySqlTable(conn, "testTable", &show_table);
 		}
 
+		if (show_demo) {
+			ImGui::ShowDemoWindow();
+		}
 
 
 		/* RENDERING */
@@ -166,21 +171,23 @@ void showMySqlTable(MYSQL* conn, std::string table, bool* show_table) {
 	unsigned int num_fields = mysql_num_fields(res);
 	MYSQL_ROW row;
 
+	ImGui::Begin(table.c_str(), show_table);
 	if (ImGui::BeginTable(table.c_str(), num_fields)) {
 		ImGui::TableNextRow();
-		for (int column = 0; column < num_fields; column++) {
+		for (unsigned int column = 0; column < num_fields; column++) {
 			ImGui::TableSetColumnIndex(column);
 			ImGui::Text(fields[column].name);
 		}
 		while (row = mysql_fetch_row(res)) {
 			ImGui::TableNextRow();
-			for (int column = 0; column < num_fields; column++) {
+			for (unsigned int column = 0; column < num_fields; column++) {
 				ImGui::TableSetColumnIndex(column);
 				ImGui::Text(row[column]);
 			}
 		}
 		ImGui::EndTable();
 	}
+	ImGui::End();
 }
 
 static void glfw_error_callback(int error, const char* description)
@@ -245,6 +252,7 @@ template<typename... Datas> bool updateTable(MYSQL* conn, std::string table, Dat
 	catch (const char* err) {
 		std::cout << "updateTable Failed" << std::endl;
 		std::cerr << err << std::endl;
+		return false;
 	}
 	if (qstate == 0) {
 		return true;

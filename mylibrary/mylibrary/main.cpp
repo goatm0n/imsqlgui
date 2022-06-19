@@ -7,31 +7,10 @@
 #include <GLFW/glfw3.h> 
 #include "mysqlapi.h"
 
-/* HEADERS */
-struct Column {
-	std::string name;
-	std::string dataType;
-};
-std::string addColumnsToCreateTableQuery(std::string);
-template<typename... Columns> std::string addColumnsToCreateTableQuery(std::string, Column, Columns...);
-template<typename... Columns> bool createTable(MYSQL*, std::string, Column, Columns...);
-bool dropTable(MYSQL*, std::string);
-std::string addColumnsToAlterTableQuery(std::string);
-template<typename... Columns> std::string addColumnsToAlterTableQuery(std::string, Column, Columns...);
-template<typename... Columns> bool alterTable(MYSQL*, std::string, Column, Columns...);
-struct Data : Column {
-	std::string value;
-};
-std::string addColumnsToInsertIntoQuery(std::string);
-template<typename... Datas> std::string addColumnsToInsertIntoQuery(std::string, Data, Datas...);
-template<typename... Datas> std::string addValuesToInsertIntoQuery(std::string, Data, Datas...);
-template<typename... Datas> bool insertInto(MYSQL*, std::string, Data, Datas...);
-template<typename...Datas> bool updateTable(MYSQL*, std::string, Data, Data, Datas...);
-template<typename...Datas> std::string addValuesToUpdateTableQuery(std::string, Data, Datas...);
-std::string addValuesToUpdateTableQuery(std::string);
-bool deleteRowFromTable(MYSQL*, std::string, Data);
+
+
+
 static void glfw_error_callback(int, const char*);
-void showMySqlTableString(MYSQL*, std::string, bool*);	// display table as formatted string in imgui window
 void showMySqlTable(MYSQL*, std::string, bool*); // display table as dear imgui table
 
 int main() {
@@ -77,7 +56,6 @@ int main() {
 	/* STATE */
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	bool show_window = true;
-	bool show_table_string = false;
 	bool show_table = false;
 	bool show_demo = false;
 	MYSQL* conn = MYSQLAPI::connectTestDb();
@@ -99,7 +77,6 @@ int main() {
 			ImGui::Text("This is some useful text.");
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Checkbox("Show Demo", &show_demo);
-			ImGui::Checkbox("Show Table String ", &show_table_string);
 			ImGui::Checkbox("Show Table ", &show_table);
 			ImGui::End();
 		}
@@ -179,191 +156,10 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 
-bool deleteRowFromTable(MYSQL* conn, std::string table , Data d1) {
-	int qstate;
-	std::string query = "DELETE FROM " + table + " WHERE ";
-	if (d1.dataType == "varchar(255)") {
-		query += d1.name + " = " + + "\"" + d1.value + "\"" + ";";
-	}
-	else {
-		query += d1.name + " = " + d1.value + ";";
-	}
-	try {
-		qstate = MYSQLAPI::makeQuery(conn, query);
-	}
-	catch (const char* err) {
-		std::cout << "deleteFromTable Failure" << "\n";
-		std::cerr << err << "\n";
-	}
-	if (qstate == 0) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-std::string addValuesToUpdateTableQuery(std::string query) {
-	query.pop_back();
-	query.pop_back();
-	return query;
-}
-template<typename... Datas> std::string addValuesToUpdateTableQuery(std::string query, Data d1, Datas... datas) {
-	if (d1.dataType == "varchar(255)") {
-		query += d1.name + " = " + "\"" + d1.value + "\"" + ", ";
-	}
-	else {
-		query += d1.name + " = " + d1.value + ", ";
-	}
-	
-	query = addValuesToUpdateTableQuery(query, datas...);
-	return query;
-}
-template<typename... Datas> bool updateTable(MYSQL* conn, std::string table, Data condition, Data d1, Datas... datas) {
-	int qstate;
-	std::string query = "UPDATE " + table + " SET ";
-	query = addValuesToUpdateTableQuery(query, d1, datas...);
-	if (condition.dataType == "varchar(255)") {
-		query += " WHERE " + condition.name + " = " + "\"" + condition.value + "\"" + ";";
-	}
-	else {
-		query += " WHERE " + condition.name + " = " + condition.value + ";";
-	}
-	try {
-		qstate = MYSQLAPI::makeQuery(conn, query);
-	}
-	catch (const char* err) {
-		std::cout << "updateTable Failed" << std::endl;
-		std::cerr << err << std::endl;
-		return false;
-	}
-	if (qstate == 0) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-std::string addValuesToInsertIntoQuery(std::string query) {
-	query.pop_back();
-	query.pop_back();
-	query += ");";
-	return query;
-}
-template<typename... Datas> std::string addValuesToInsertIntoQuery(std::string query, Data d1, Datas... datas) {
-	if (d1.dataType == "varchar(255)") {
-		query += "\"" + d1.value + "\", ";
-	}
-	else {
-		query += d1.value + ", ";
-	}
-	query = addValuesToInsertIntoQuery(query, datas...);
-	return query;
-}
-std::string addColumnsToInsertIntoQuery(std::string query) {
-	query.pop_back();
-	query.pop_back();
-	query += ")";
-	return query;
-}
-template<typename... Datas> std::string addColumnsToInsertIntoQuery(std::string query, Data d1, Datas... datas) {
-	query += d1.name + ", ";
-	query = addColumnsToInsertIntoQuery(query, datas...);
-	return query;
-}
-template<typename... Datas> bool insertInto(MYSQL* conn, std::string table, Data d1, Datas... datas) {
-	int qstate;
-	std::string query = "INSERT INTO " + table + " (";
-	query = addColumnsToInsertIntoQuery(query, d1, datas...);
-	query += " VALUES (";
-	query = addValuesToInsertIntoQuery(query, d1, datas...);
-	try {
-		qstate = MYSQLAPI::makeQuery(conn, query);
-	}
-	catch (const char* err) {
-		std::cout << "insertInto Failed" << "\n";
-		std::cerr << err << "\n";
-	}
-	if (qstate) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-std::string addColumnsToAlterTableQuery(std::string query) {
-	return query;
-}
-
-template<typename... Columns>
-std::string addColumnsToAlterTableQuery(std::string query, Column c1, Columns... cols) {
-	query += "ADD " + c1.name + " " + c1.dataType + ";";
-	query = addColumnsToAlterTableQuery(query, cols...);
-	return query;
-}
 
 
-template<typename... Columns>
-bool alterTable(MYSQL* conn, std::string table, Column c1, Columns... cols) {
-	std::string query = "ALTER TABLE " + table + "\n";
-	query = addColumnsToAlterTableQuery(query, c1, cols...);
-	std::cout << query;
 
 
-}
 
-std::string addColumnsToCreateTableQuery(std::string query) {
-	query.pop_back();
-	return query;
-}
 
-template<typename... Columns>
-std::string addColumnsToCreateTableQuery(std::string query, Column c1, Columns... cols) {
-	query += c1.name + " " + c1.dataType + ",";
-	query = addColumnsToCreateTableQuery(query, cols...);
-	return query;
-}
 
-template<typename... Columns>
-bool createTable(MYSQL* conn, std::string table, Column c1, Columns... cols) {
-	std::string query;
-	int qstate;
-
-	query = "CREATE TABLE " + table + " (";
-	query = addColumnsToCreateTableQuery(query, c1, cols...);
-	query += ");";
-	try {
-		qstate = MYSQLAPI::makeQuery(conn, query);
-	}
-	catch (const char* e) {
-		std::cout << "Failed to create table" << std::endl;
-		std::cerr << e << std::endl;
-	}
-	if (qstate == 0) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-bool dropTable(MYSQL* conn, std::string table) {
-	std::string query = "DROP TABLE " + table + ";";
-	int qstate;
-	try {
-		qstate = MYSQLAPI::makeQuery(conn, query);
-	}
-	catch (const char* e) {
-		std::cout << "Failed to drop table" << std::endl;
-		std::cerr << e << std::endl;
-	}
-	if (qstate == 0) {
-		return true;
-	}
-	else {
-		return false;
-	}
-
-}
